@@ -1,32 +1,31 @@
-import { StyleSheet, Text, ToastAndroid, View } from "react-native"
-import MapView, { Callout, LatLng, MapPressEvent, Marker, MarkerDragStartEndEvent, MarkerPressEvent, PoiClickEvent, PROVIDER_GOOGLE, Region } from "react-native-maps"
+import { StyleSheet, ToastAndroid, View } from "react-native"
+import { LatLng, MapPressEvent, Marker, MarkerDragStartEndEvent, MarkerPressEvent, PoiClickEvent, Region } from "react-native-maps"
 import MapViewDirections from "react-native-maps-directions"
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons"
-import { faDirections, faLocation } from "@fortawesome/free-solid-svg-icons"
+import { faDirections, faLocation, faSatellite } from "@fortawesome/free-solid-svg-icons"
 import { useEffect, useRef, useState } from "react"
 import { GOOGLE_API_KEY } from "../../constants/Google"
-import { DEFAULT_DELTA, DEFAULT_REGION } from "../../constants/Location"
-import { getCurrentLocation } from "../../utils/LocationUtils"
+import { DEFAULT_DELTA, DEFAULT_REGION, CLOSED_VIEW_DELTA } from "../../constants/Location"
+import { currentLocationHandler } from "../../utils/LocationUtils"
 import { DEVICE_HEIGHT, DEVICE_WIDTH } from "../../constants/Screen"
-import { getLatLngFromLocation } from "../../utils/MapUtils"
+import { animateToRegion, getLatLngFromLocation } from "../../utils/MapUtils"
 import ShareLocationModal from "./ShareLocationModal"
-import SearchBar from "./SearchBar"
 import MapOptions from "./MapOptions"
 import colors from "../../theme/colors"
-// import axios from "axios"
+import Map from "../base/Map"
+import GoogleInput from "../base/GoogleInput"
 
 const style = StyleSheet.create({
-  container: {
-  },
   mapContainer: {
     ...StyleSheet.absoluteFillObject,
-    height: DEVICE_HEIGHT,
+    height: DEVICE_HEIGHT - 80,
     width: DEVICE_WIDTH,
     alignItems: "center",
     justifyContent: "flex-end"
   },
-  map: {
-    ...StyleSheet.absoluteFillObject,
+  input: {
+    top: 3,
+    width: "90%"
   }
 })
 
@@ -34,37 +33,25 @@ export default () => {
 
   const [currentPointedRegion, setCurrentPointedRegion] = useState<Region>(DEFAULT_REGION)
   const [isDirected, setIsDirected] = useState<boolean>(false)
-  const [destination, setDestination] = useState<LatLng>({ latitude: 37.3317876, longitude: -122.0054812 })
+  const [destination, setDestination] = useState<LatLng>({ latitude: 16.0591, longitude: 108.2434 })
   const [isClickedToShare, setIsClickedToShare] = useState<boolean>(false)
+  const [mapType, setMapType] = useState<"standard" | "satellite">("standard")
 
-  const directionRef = useRef<any>(null)
   const mapRef = useRef<any>(null)
 
   useEffect(() => {
-    getCurrentLocation(
+    currentLocationHandler(
       ({ coords }) => {
         console.log("Current: ", coords);
         const region = {
           ...getLatLngFromLocation(coords),
           ...DEFAULT_DELTA
         }
-        mapRef?.current?.animateToRegion(region, 500)
-        setCurrentPointedRegion(region);
+        animateToRegion(mapRef, region, 500, setCurrentPointedRegion)
       }
     );
   }, []);
 
-  //get address from gg api
-  // useEffect(() => {
-  //   axios
-  //     .get(`https://maps.googleapis.com/maps/api/geocode/json?address=${currentPointedRegion.latitude},${currentPointedRegion.longitude}&key=${GOOGLE_API_KEY}`)
-  //     .then(res => console.log("address info: ", res.data))
-  //     .catch(e => console.log(e))
-  // }, [])
-  // console.log("", );
-  const changeRegionHandler = (region: Region) => {
-    setCurrentPointedRegion(region)
-  }
   const pressMapHandler = (e: MapPressEvent) => {
     setCurrentPointedRegion({ ...currentPointedRegion, ...e.nativeEvent.coordinate })
   }
@@ -78,50 +65,47 @@ export default () => {
   const markerPressHandler = (e: MarkerPressEvent) => { setCurrentPointedRegion({ ...currentPointedRegion, ...e.nativeEvent.coordinate }) }
   return (
     <View style={style.mapContainer}>
-      <MapView
+      <Map
         ref={mapRef}
-        style={style.map}
-        provider={PROVIDER_GOOGLE}
         initialRegion={currentPointedRegion}
+        mapType={mapType}
         // showsUserLocation={true}
         // userInterfaceStyle={"dark"}
         onPress={pressMapHandler}
-        onRegionChange={changeRegionHandler}
+        // onRegionChange={setCurrentPointedRegion}
         onMarkerDragEnd={markerDragEndHandler}
         onPoiClick={poiClickHandler}
         onMarkerPress={markerPressHandler}
+        zoomControlEnabled={true}
+        showDefaultMarker
       >
-        <Marker
-          draggable
-          coordinate={getLatLngFromLocation(currentPointedRegion)}
-        >
-          <Callout>
-            <Text>{`${currentPointedRegion.latitude}, ${currentPointedRegion.longitude}`}</Text>
-          </Callout>
-        </Marker>
-
         {
           isDirected && (
             <>
               <MapViewDirections
-                ref={directionRef}
+                // ref={directionRef}
                 apikey={GOOGLE_API_KEY}
                 origin={getLatLngFromLocation(currentPointedRegion)}
                 destination={destination}
                 strokeWidth={5}
                 strokeColor={colors.primary}
-                onError={async () => ToastAndroid.showWithGravity("Can't direct to this location!", ToastAndroid.SHORT, ToastAndroid.BOTTOM)} />
+                onError={() => ToastAndroid.showWithGravity("Can't direct to this location!", ToastAndroid.SHORT, ToastAndroid.BOTTOM)} />
               <Marker coordinate={destination} pinColor="green" />
             </>
 
           )
         }
-      </MapView>
-      <SearchBar mapRef={mapRef} markerChangePositionHandler={setCurrentPointedRegion} />
+      </Map>
+      <GoogleInput
+        mapRef={mapRef}
+        onChoosePlace={setCurrentPointedRegion}
+        style={style.input}
+        placeholder="Search a place..."
+      />
       <MapOptions data={[
         {
           icon: faLocation,
-          onPress: () => getCurrentLocation(
+          onPress: () => currentLocationHandler(
             ({ coords }) => {
               console.log("Current: ", coords);
               const region = {
@@ -142,8 +126,21 @@ export default () => {
         {
           icon: faDirections,
           onPress: () => {
-            mapRef?.current?.animateToRegion({ destination, ...DEFAULT_DELTA }, 800)
+            if (!isDirected)
+              animateToRegion(
+                mapRef,
+                { ...destination, ...CLOSED_VIEW_DELTA },
+                800
+              )
             setIsDirected(!isDirected)
+          }
+        },
+        {
+          icon: faSatellite,
+          onPress: () => {
+            setMapType(prev => {
+              return prev === "standard" ? "satellite" : "standard"
+            })
           }
         }
       ]}

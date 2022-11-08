@@ -1,10 +1,10 @@
 import { SafeAreaView } from "react-native"
-import Map from "../components/home/Map"
+import HomeMap from "../components/home/HomeMap"
 
 export default () => {
   return (
     <SafeAreaView>
-      <Map />
+      <HomeMap />
     </SafeAreaView>
   )
 }

@@ -31,7 +31,7 @@ const style = StyleSheet.create({
     height: "80%",
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: colors.overlay,
+    borderColor: colors.primary,
     borderRadius: 5,
     color: colors.primary,
   },

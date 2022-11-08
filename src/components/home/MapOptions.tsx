@@ -6,7 +6,7 @@ import colors from "../../theme/colors"
 const style = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 80,
+    top: 80,
     right: 10,
     padding: 10,
     borderRadius: 5,
@@ -14,6 +14,7 @@ const style = StyleSheet.create({
     shadowOffset: { width: 2, height: 2 },
     shadowRadius: 4,
     elevation: 5,
+    opacity: 0.7
   },
   option: {
     borderWidth: 1,
