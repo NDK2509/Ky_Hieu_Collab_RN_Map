@@ -3,8 +3,9 @@ import { StyleSheet, ToastAndroid, View } from "react-native"
 import { LatLng, Marker, Region } from "react-native-maps"
 import MapViewDirections from "react-native-maps-directions"
 import { GOOGLE_API_KEY } from "../../constants/Google"
-import { DEFAULT_REGION } from "../../constants/Location"
+import { DEFAULT_DELTA, DEFAULT_REGION } from "../../constants/Location"
 import { DEVICE_HEIGHT, DEVICE_WIDTH } from "../../constants/Screen"
+import { useCurrentLocation } from "../../hooks"
 import colors from "../../theme/colors"
 import { getLatLngFromLocation } from "../../utils/MapUtils"
 import GoogleInput from "../base/GoogleInput"
@@ -30,9 +31,14 @@ const style = StyleSheet.create({
 })
 export default () => {
 
-  const [origin, setOrigin] = useState<LatLng>()
+  const [currentLatLng] = useCurrentLocation()
+  const [origin, setOrigin] = useState<LatLng>(currentLatLng)
   const [destination, setDestination] = useState<LatLng>()
-  const [currentRegion, setCurrentRegion] = useState<Region>(DEFAULT_REGION)
+  // const [currentRegion, setCurrentRegion] = useState<Region>(DEFAULT_REGION)
+  const [currentRegion, setCurrentRegion] = useState<Region>({
+    ...currentLatLng as LatLng,
+    ...DEFAULT_DELTA
+  })
 
   const mapRef = useRef<any>(null)
 
@@ -53,15 +59,15 @@ export default () => {
           destination && <Marker coordinate={destination} pinColor="green" />
         }
         {
-          origin && destination && 
-            <MapViewDirections 
-              apikey={GOOGLE_API_KEY}
-              origin={getLatLngFromLocation(origin)}
-              destination={destination}
-              strokeWidth={5}
-              strokeColor={colors.primary}
-              onError={() => ToastAndroid.showWithGravity("Can't direct to this location!", ToastAndroid.SHORT, ToastAndroid.BOTTOM)}
-            /> 
+          origin && destination &&
+          <MapViewDirections
+            apikey={GOOGLE_API_KEY}
+            origin={getLatLngFromLocation(origin)}
+            destination={destination}
+            strokeWidth={5}
+            strokeColor={colors.primary}
+            onError={() => ToastAndroid.showWithGravity("Can't direct to this location!", ToastAndroid.SHORT, ToastAndroid.BOTTOM)}
+          />
         }
       </Map>
       <GoogleInput

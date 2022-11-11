@@ -14,6 +14,7 @@ import MapOptions from "./MapOptions"
 import colors from "../../theme/colors"
 import Map from "../base/Map"
 import GoogleInput from "../base/GoogleInput"
+import { useCurrentLocation } from "../../hooks"
 
 const style = StyleSheet.create({
   mapContainer: {
@@ -33,23 +34,29 @@ export default () => {
 
   const [currentPointedRegion, setCurrentPointedRegion] = useState<Region>(DEFAULT_REGION)
   const [isDirected, setIsDirected] = useState<boolean>(false)
-  const [destination, setDestination] = useState<LatLng>({ latitude: 16.0591, longitude: 108.2434 })
+  const [currentLatLng, getCurrentLatLng] = useCurrentLocation()
+  const [destination] = useState<LatLng>(currentLatLng)
   const [isClickedToShare, setIsClickedToShare] = useState<boolean>(false)
   const [mapType, setMapType] = useState<"standard" | "satellite">("standard")
 
   const mapRef = useRef<any>(null)
 
   useEffect(() => {
-    currentLocationHandler(
-      ({ coords }) => {
-        console.log("Current: ", coords);
-        const region = {
-          ...getLatLngFromLocation(coords),
-          ...DEFAULT_DELTA
-        }
-        animateToRegion(mapRef, region, 500, setCurrentPointedRegion)
-      }
-    );
+    const region = {
+      ...currentLatLng as LatLng,
+      ...DEFAULT_DELTA
+    }
+    animateToRegion(mapRef, region, 500, setCurrentPointedRegion)
+    // currentLocationHandler(
+    //   ({ coords }) => {
+    //     console.log("Current: ", coords);
+    //     const region = {
+    //       ...getLatLngFromLocation(coords),
+    //       ...DEFAULT_DELTA
+    //     }
+    //     animateToRegion(mapRef, region, 500, setCurrentPointedRegion)
+    //   }
+    // );
   }, []);
 
   const pressMapHandler = (e: MapPressEvent) => {
@@ -105,17 +112,15 @@ export default () => {
       <MapOptions data={[
         {
           icon: faLocation,
-          onPress: () => currentLocationHandler(
-            ({ coords }) => {
-              console.log("Current: ", coords);
-              const region = {
-                ...getLatLngFromLocation(coords),
-                ...DEFAULT_DELTA
-              }
-              mapRef?.current?.animateToRegion(region, 800)
-              setCurrentPointedRegion(region);
+          onPress: () => {
+            getCurrentLatLng()
+            const region = {
+              ...currentLatLng,
+              ...DEFAULT_DELTA
             }
-          )
+            animateToRegion(mapRef, region, 800, setCurrentPointedRegion)
+          }
+
         },
         {
           icon: faPaperPlane,
